@@ -5,10 +5,69 @@ This guide explains how to run the SatAns website locally with both frontend and
 ## Prerequisites
 
 - Node.js (v16 or higher)
-- PostgreSQL (v12 or higher)
+- PostgreSQL (v12 or higher) - **Linux/Mac only**
+- Python (for frontend server)
 - npm
 
-## Quick Start
+## 🚀 Quick Start (Recommended)
+
+### Option 1: Using Startup Scripts (Easiest)
+
+**Windows:**
+```bash
+# Double-click or run:
+start-website.bat
+```
+
+**Linux/Mac:**
+```bash
+# Make executable (first time only)
+chmod +x start-website.sh
+
+# Run the script
+./start-website.sh
+```
+
+This will automatically:
+- Start PostgreSQL (Linux/Mac)
+- Set up the database
+- Install dependencies
+- Start both backend and frontend servers
+- Open them in separate terminal windows
+
+### Option 2: Manual Startup
+
+**Step 1: Start Backend Server**
+
+Windows:
+```bash
+start-backend.bat
+```
+
+Linux/Mac:
+```bash
+./start-backend.sh
+```
+
+**Step 2: Start Frontend Server (in a new terminal)**
+
+Windows:
+```bash
+start-frontend.bat
+```
+
+Linux/Mac:
+```bash
+./start-frontend.sh
+```
+
+### Access the Website
+
+Once both servers are running:
+- **Frontend**: http://localhost:8080/index.html
+- **Backend API**: http://localhost:3000
+
+## Detailed Setup (If Quick Start Doesn't Work)
 
 ### 1. Install Dependencies
 
