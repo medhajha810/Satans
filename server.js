@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const path = require('path');
 require('dotenv').config();
 
 const pool = require('./config/database');
@@ -14,7 +15,14 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('./'));
+
+// Serve static files from root directory correctly
+app.use(express.static(__dirname));
+
+// Explicit path for root to ensure index.html loads
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // Razorpay Instance
 const razorpay = new Razorpay({
