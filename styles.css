@@ -984,32 +984,44 @@ html {
 
 .hero-image {
     flex: 0 0 40%;
-    /* Reduced width */
     display: flex;
     justify-content: flex-end;
-    /* Push image to the right edge */
-    align-items: center;
+    align-items: flex-end;
     position: relative;
     z-index: 1;
+    margin-top: -20px;
     margin-right: -50px;
-    /* Shift further to the right */
+    margin-bottom: -50px;
+}
+
+.hero-image::after {
+    content: '';
+    position: absolute;
+    bottom: 150px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 95%;
+    height: 80px;
+    background: radial-gradient(ellipse at center, rgba(30, 30, 30, 0.85) 0%, rgba(30, 30, 30, 0.65) 30%, rgba(30, 30, 30, 0.3) 50%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(20px);
+    z-index: 0;
 }
 
 .hero-image img {
-    max-height: 110vh;
-    /* Increased height */
+    max-height: 130vh;
     max-width: 500px;
-    /* Reduced width */
-    width: auto;
-    height: auto;
+    width: 500px;
+    height: 150vh;
     filter: drop-shadow(0 20px 40px rgba(232, 72, 85, 0.15));
     animation: none !important;
+    position: relative;
+    z-index: 2;
 }
 
 .hero-subtitle {
     font-size: 13px;
     color: #6B7280;
-    /* Slate gray - different from title */
     letter-spacing: 4px;
     margin-top: 20px;
     margin-bottom: 24px;
@@ -1241,22 +1253,6 @@ html {
     margin-top: 5px;
 }
 
-.hero-image {
-    flex: 0 0 40%;
-    /* Reduced width */
-    /* text-align: right; */
-    margin-right: -50px;
-    /* Shift further to the right */
-}
-
-.hero-image img {
-    max-width: 550px;
-    /* Reduced width */
-    max-height: 110vh;
-    /* Increased height */
-    /* width: auto; */
-    animation: floatImage 3s ease-in-out infinite;
-}
 
 @keyframes floatImage {
 
@@ -2394,15 +2390,15 @@ html {
     position: relative;
     display: grid;
     grid-template-columns: 1.5fr 1fr;
-    gap: 60px;
-    align-items: center;
+    gap: 0;
+    align-items: stretch;
     background: #fff;
     border-radius: 32px;
     z-index: 1;
     box-shadow: 0 8px 32px rgba(232, 72, 85, 0.10), 0 2px 8px rgba(232, 72, 85, 0.10);
-    max-width: 1200px;
-    width: 95%;
-    padding: 64px 64px 64px 64px;
+    max-width: 1400px;
+    width: 100%;
+    padding: 64px 64px 20px 64px;
     margin: 0 auto 80px auto;
     min-height: 540px;
     overflow: hidden;
@@ -2424,14 +2420,16 @@ html {
 
 .contact-title {
     grid-column: 1 / -1;
-    font-size: 110px;
+    font-size: 140px;
     font-weight: 900;
     color: transparent;
     -webkit-text-stroke: 3px #d02531;
-    text-align: center;
-    margin-bottom: 56px;
-    letter-spacing: 2px;
-    line-height: 1.1;
+    text-align: left;
+    margin-bottom: 0;
+    padding: 0;
+    letter-spacing: 6px;
+    line-height: 1;
+    white-space: nowrap;
     transition: color 0.3s, -webkit-text-stroke-color 0.3s, background 0.3s;
 }
 
@@ -2460,12 +2458,11 @@ html {
 .contact-form {
     display: flex;
     flex-direction: column;
-    gap: 58px;
+    gap: 24px;
     background: #fff;
     border-radius: 24px;
-    padding: 24px 32px 32px 32px;
-    box-shadow: 0 2px 12px rgba(232, 72, 85, 0.06);
-    border: 2px solid #ff5964;
+    padding: 0 32px 0 32px;
+    height: 100%;
 }
 
 .contact-form input,
@@ -2481,6 +2478,17 @@ html {
     box-shadow: 0 2px 8px rgba(232, 72, 85, 0.04);
     color: #222;
     width: 100%;
+    margin-bottom: 10px;
+    margin-top: 0;
+}
+
+.contact-form input:first-child {
+    margin-top: 0 !important;
+}
+
+.contact-form textarea {
+    margin-top: 0 !important;
+    margin-bottom: 24px;
 }
 
 .contact-form input:focus,
@@ -2497,7 +2505,12 @@ html {
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 38px;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.form-row input {
+    margin-bottom: 0 !important;
 }
 
 .submit-btn {
@@ -2514,6 +2527,7 @@ html {
     box-shadow: 0 8px 25px rgba(232, 72, 85, 0.4);
     position: relative;
     overflow: hidden;
+    margin-top: auto;
 }
 
 .submit-btn::before {
@@ -2546,15 +2560,22 @@ html {
     height: 100%;
     min-width: 320px;
     max-width: 100%;
+    position: relative;
+    z-index: 10;
 }
 
 .contact-image img {
     width: 100%;
-    max-width: 520px;
+    max-width: 700px;
     filter: drop-shadow(0 8px 32px rgba(232, 72, 85, 0.10));
     border-radius: 18px;
-    min-width: 340px;
-    max-width: 100%;
+    min-width: 450px;
+    margin-top: -220px;
+    height: 850px;
+    object-fit: cover;
+    object-position: top;
+    position: relative;
+    z-index: 10;
 }
 
 /* Footer */
@@ -3128,7 +3149,6 @@ html {
 
 /* Contact Form Select Styling */
 .contact-form select {
-    margin-bottom: 20px;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
