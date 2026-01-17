@@ -705,7 +705,7 @@ html {
     background: linear-gradient(180deg, rgba(255, 245, 246, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    padding: 4px 0;
+    padding: 3px 0;
     position: sticky;
     top: 0;
     width: 100%;
@@ -734,17 +734,26 @@ html {
     align-items: center;
 }
 
+.logo {
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+
 .logo h1 {
     font-size: 28px;
     font-weight: 700;
     color: #333;
     font-family: 'League Spartan', sans-serif;
+    margin: 0;
 }
 
 .logo img {
-    height: 80px;
+    height: 60px;
     width: auto;
     transition: transform 0.3s ease;
+    display: block;
+    margin: 0;
 }
 
 .logo img:hover {
@@ -757,7 +766,7 @@ html {
     list-style: none;
     gap: 8px;
     background: rgba(0, 0, 0, 0.04);
-    padding: 6px 8px;
+    padding: 4px 8px;
     border-radius: 50px;
     border: 1px solid #000;
 }
@@ -772,7 +781,7 @@ html {
     font-weight: 500;
     font-size: 14px;
     transition: all 0.3s ease;
-    padding: 10px 20px;
+    padding: 8px 20px;
     border-radius: 50px;
     display: inline-block;
     position: relative;
