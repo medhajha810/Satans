@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { body, validationResult } = require('express-validator');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
@@ -23,8 +26,35 @@ const pool = require('./config/database');
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(helmet()); // Add security headers
+
+// CORS Configuration
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production'
+        ? process.env.FRONTEND_URL
+        : ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000'],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '10kb' })); // Limit request body size
+
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
+});
+
+// Stricter limiter for auth routes
+const authLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10, // limit asking for auth to 10 per hour
+    message: 'Too many login attempts, please try again later.'
+});
+
+app.use('/api/', limiter);
+app.use('/api/auth/', authLimiter);
 
 // Serve static files from public directory to match Vercel structure
 app.use(express.static(path.join(__dirname, 'public')));
@@ -50,6 +80,9 @@ const transporter = nodemailer.createTransport({
 });
 
 // JWT Secret
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    console.warn('WARNING: JWT_SECRET is not defined in production environment!');
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Middleware to verify JWT token
@@ -132,8 +165,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         res.status(201).json({
             message: 'Registration successful. Please check your email for verification code.',
-            user: result.rows[0],
-            verificationCode: verificationCode // Remove in production
+            user: result.rows[0]
         });
     } catch (error) {
         console.error('Registration error:', error);
@@ -202,8 +234,7 @@ app.post('/api/auth/resend-code', async (req, res) => {
         transporter.sendMail(mailOptions);
 
         res.json({
-            message: 'New verification code sent.',
-            verificationCode: newCode // Remove in production
+            message: 'New verification code sent.'
         });
     } catch (error) {
         res.status(500).json({ error: 'Failed to resend code.' });
@@ -253,9 +284,18 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/admin-login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD) {
+
+        // Timing-safe comparison to prevent timing attacks
+        const isEmailValid = email === process.env.ADMIN_EMAIL;
+
+        // Always compare password even if email is wrong (prevent timing attacks)
+        const passwordToCheck = isEmailValid ? process.env.ADMIN_PASSWORD_HASH : '$2a$10$dummyhashtopreventtimingattacksxxxxxxxxxxxxxxxxxxxxxxxxxx';
+        const isPasswordValid = await bcrypt.compare(password, passwordToCheck);
+
+        if (!isEmailValid || !isPasswordValid) {
             return res.status(400).json({ error: 'Invalid admin credentials.' });
         }
+
         const token = jwt.sign({ email: email, role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ token, message: 'Admin login successful' });
     } catch (error) {
@@ -270,37 +310,73 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
         const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Email not found.' });
-        }
+        // Prevent user enumeration - always return success
+        if (result.rows.length > 0) {
+            const resetToken = crypto.randomBytes(32).toString('hex');
+            const resetExpiry = new Date(Date.now() + 3600000); // 1 hour
 
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetExpiry = new Date(Date.now() + 3600000); // 1 hour
+            await pool.query(
+                'UPDATE users SET reset_token = $1, reset_expiry = $2 WHERE email = $3',
+                [resetToken, resetExpiry, email]
+            );
 
-        await pool.query(
-            'UPDATE users SET reset_token = $1, reset_expiry = $2 WHERE email = $3',
-            [resetToken, resetExpiry, email]
-        );
-
-        // Send reset email
-        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: 'Password Reset - SatAns',
-            html: `
+            // Send reset email
+            const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'Password Reset - SatAns',
+                html: `
                 <h2>Password Reset Request</h2>
                 <p>Click the link below to reset your password:</p>
                 <a href="${resetLink}">${resetLink}</a>
                 <p>This link will expire in 1 hour.</p>
             `
-        };
+            };
 
-        transporter.sendMail(mailOptions);
+            transporter.sendMail(mailOptions);
+        }
 
-        res.json({ message: 'Password reset link sent to your email.' });
+        // Always return the same response to prevent user enumeration
+        res.json({ message: 'If the email exists, a password reset link has been sent.' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to process request.' });
+    }
+});
+
+// Reset Password (NEW ENDPOINT)
+app.post('/api/auth/reset-password', [
+    body('token').notEmpty().trim(),
+    body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { token, newPassword } = req.body;
+
+        const result = await pool.query(
+            'SELECT * FROM users WHERE reset_token = $1 AND reset_expiry > NOW()',
+            [token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(400).json({ error: 'Invalid or expired reset token.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await pool.query(
+            'UPDATE users SET password = $1, reset_token = NULL, reset_expiry = NULL WHERE id = $2',
+            [hashedPassword, result.rows[0].id]
+        );
+
+        res.json({ message: 'Password reset successful.' });
+    } catch (error) {
+        console.error('Password reset error:', error);
+        res.status(500).json({ error: 'Failed to reset password.' });
     }
 });
 
@@ -357,6 +433,16 @@ app.post('/api/payment/create-order', verifyToken, async (req, res) => {
 app.post('/api/payment/verify', verifyToken, async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, packageName, amount } = req.body;
+
+        // Check for idempotency - prevent duplicate processing
+        const existing = await pool.query(
+            'SELECT * FROM subscriptions WHERE transaction_id = $1',
+            [razorpay_payment_id]
+        );
+
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ error: 'Payment already processed.' });
+        }
 
         // Verify signature
         const body = razorpay_order_id + '|' + razorpay_payment_id;
@@ -468,7 +554,7 @@ app.post('/api/contact/submit', async (req, res) => {
         // Send notification email to admin
         const mailOptions = {
             from: process.env.EMAIL_USER,
-            to: 'satansproduction@gmail.com',
+            to: process.env.ADMIN_EMAIL,
             replyTo: email, // Set reply-to to user's email
             subject: 'New Contact Form Submission',
             html: `
