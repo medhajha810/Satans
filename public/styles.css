@@ -5083,15 +5083,22 @@ body.dark-mode .connect-btn:hover {
 }
 
 @keyframes gradientShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
 }
 
 .pricing-card:hover {
     transform: translateY(-10px);
     border-color: rgba(232, 72, 85, 0.3);
     box-shadow: 0 20px 40px rgba(232, 72, 85, 0.15),
-                0 10px 20px rgba(0, 0, 0, 0.1);
+        0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
 .pricing-header {
@@ -5216,25 +5223,91 @@ body.dark-mode .connect-btn:hover {
     .pricing {
         padding: 60px 20px;
     }
-    
+
     .pricing .section-title {
         font-size: 2.5rem;
         margin-bottom: 40px;
     }
-    
+
     .pricing-grid {
         grid-template-columns: 1fr;
         gap: 24px;
     }
-    
+
     .pricing-card {
         padding: 32px 24px;
     }
-    
+
     .pricing-price {
         font-size: 2.5rem;
     }
 }
 
 
-/* Dark Mode Footer & Pricing Polish */ .dark-mode .footer { background: #050505; color: #fff; position: relative; } .dark-mode .footer::before { filter: invert(1) opacity(0.05); } .dark-mode .footer-cta { background: #0a0a0a; border-bottom: 1px solid rgba(255,255,255,0.05); } .dark-mode .footer-cta h2 { color: #fff; } .dark-mode .footer-logo h2 { color: #fff; text-shadow: 0 0 20px rgba(255, 255, 255, 0.2); } .dark-mode .footer-nav a { color: #b0b0b0; } .dark-mode .footer-nav a:hover { color: var(--primary-red); } .dark-mode .footer-credits { color: #666; } .dark-mode .footer-copyright-box { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); color: #888; } /* Dark Mode Pricing Polish */ .dark-mode .pricing { background: #0f0f0f; } .dark-mode .pricing .section-title { color: #fff; } .dark-mode .pricing-card { background: #1a1a1a; border: 1px solid rgba(255,255,255,0.05); } .dark-mode .pricing-price { color: #fff; } .dark-mode .pricing-features li { color: #ccc; } .dark-mode .package-label { color: #888; }
+/* Dark Mode Footer & Pricing Polish */
+.dark-mode .footer {
+    color: #fff;
+    position: relative;
+}
+
+.dark-mode .footer::before {
+    filter: invert(1) opacity(0.05);
+}
+
+.dark-mode .footer-cta {
+    background: #0a0a0a;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .footer-cta h2 {
+    color: #fff;
+}
+
+.dark-mode .footer-logo h2 {
+    color: #fff;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.dark-mode .footer-nav a {
+    color: #b0b0b0;
+}
+
+.dark-mode .footer-nav a:hover {
+    color: var(--primary-red);
+}
+
+.dark-mode .footer-credits {
+    color: #666;
+}
+
+.dark-mode .footer-copyright-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: #888;
+}
+
+/* Dark Mode Pricing Polish */
+.dark-mode .pricing {
+    background: #0f0f0f;
+}
+
+.dark-mode .pricing .section-title {
+    color: #fff;
+}
+
+.dark-mode .pricing-card {
+    background: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .pricing-price {
+    color: #fff;
+}
+
+.dark-mode .pricing-features li {
+    color: #ccc;
+}
+
+.dark-mode .package-label {
+    color: #888;
+}
