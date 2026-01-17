@@ -8,6 +8,16 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 require('dotenv').config();
 
+// DEBUG: Log environment variables on startup
+console.log('=== Environment Check ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('DB_HOST:', process.env.DB_HOST || 'NOT SET');
+console.log('DB_USER:', process.env.DB_USER || 'NOT SET');
+console.log('DB_NAME:', process.env.DB_NAME || 'NOT SET');
+console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***SET***' : 'NOT SET');
+console.log('DB_PORT:', process.env.DB_PORT || 'NOT SET');
+console.log('========================');
+
 const pool = require('./config/database');
 
 const app = express();
