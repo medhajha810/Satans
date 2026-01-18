@@ -25,6 +25,9 @@ const pool = require('./config/database');
 
 const app = express();
 
+// Trust Vercel's proxy for rate limiting and IP detection
+app.set('trust proxy', 1);
+
 // Middleware
 // Force HTTPS in production
 if (process.env.NODE_ENV === 'production') {

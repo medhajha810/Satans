@@ -8,7 +8,7 @@ const pool = new Pool({
     port: process.env.DB_PORT || 5432,
     ssl: (process.env.DB_HOST && process.env.DB_HOST.includes('supabase'))
         ? {
-            rejectUnauthorized: process.env.NODE_ENV === 'production'
+            rejectUnauthorized: false // Supabase uses self-signed certs
         }
         : false
 });
