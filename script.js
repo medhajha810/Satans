@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('userSubscriptionDetails').innerHTML = '';
         document.getElementById('availablePackagesList').innerHTML = '<p style="color:#666;text-align:center;">Loading packages...</p>';
         try {
-            const res = await fetch('/api/packages');
             const packages = await res.json();
             if (!Array.isArray(packages) || packages.length === 0) {
                 document.getElementById('availablePackagesList').innerHTML = '<p style="color:#666;text-align:center;">No packages available.</p>';
@@ -520,7 +519,7 @@ function initializeAuthSystem() {
         document.getElementById('userSubscriptionDetails').innerHTML = subHtml;
         // Fetch all available packages
         try {
-            const res = await fetch('/api/packages');
+            const res = await fetch('http://localhost:3000/api/packages');
             const packages = await res.json();
             if (!Array.isArray(packages) || packages.length === 0) {
                 document.getElementById('availablePackagesList').innerHTML = '<p style="color:#666;text-align:center;">No packages available.</p>';

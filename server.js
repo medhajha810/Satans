@@ -29,67 +29,11 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Middleware
-// Force HTTPS in production
-if (process.env.NODE_ENV === 'production') {
-    app.use((req, res, next) => {
-        if (req.header('x-forwarded-proto') !== 'https') {
-            res.redirect(301, `https://${req.header('host')}${req.url}`);
-        } else {
-            next();
-        }
-    });
-}
+app.use(cors());
+app.use(express.json());
 
-// Security headers with enhanced CSP
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://api.razorpay.com"],
-            frameSrc: ["'self'", "https://api.razorpay.com"]
-        }
-    },
-    hsts: {
-        maxAge: 31536000, // 1 year
-        includeSubDomains: true,
-        preload: true
-    }
-}));
-
-// CORS Configuration
-const corsOptions = {
-    origin: process.env.NODE_ENV === 'production'
-        ? process.env.FRONTEND_URL
-        : ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000'],
-    credentials: true,
-    optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
-app.use(express.json({ limit: '10kb' })); // Limit request body size
-
-// Rate Limiting
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: 'Too many requests from this IP, please try again later.'
-});
-
-// Stricter limiter for auth routes
-const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10, // limit asking for auth to 10 per hour
-    message: 'Too many login attempts, please try again later.'
-});
-
-app.use('/api/', limiter);
-app.use('/api/auth/', authLimiter);
-
-// Serve static files from public directory to match Vercel structure
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from root directory correctly
+app.use(express.static(__dirname));
 
 // Explicit path for root to ensure index.html loads
 app.get('/', (req, res) => {
@@ -266,7 +210,8 @@ app.post('/api/auth/resend-code', async (req, res) => {
         transporter.sendMail(mailOptions);
 
         res.json({
-            message: 'New verification code sent.'
+            message: 'New verification code sent.',
+            verificationCode: newCode // Remove in production
         });
     } catch (error) {
         res.status(500).json({ error: 'Failed to resend code.' });
@@ -342,35 +287,35 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
         const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
-        // Prevent user enumeration - always return success
-        if (result.rows.length > 0) {
-            const resetToken = crypto.randomBytes(32).toString('hex');
-            const resetExpiry = new Date(Date.now() + 3600000); // 1 hour
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Email not found.' });
+        }
 
-            await pool.query(
-                'UPDATE users SET reset_token = $1, reset_expiry = $2 WHERE email = $3',
-                [resetToken, resetExpiry, email]
-            );
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetExpiry = new Date(Date.now() + 3600000); // 1 hour
 
-            // Send reset email
-            const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-            const mailOptions = {
-                from: process.env.EMAIL_USER,
-                to: email,
-                subject: 'Password Reset - SatAns',
-                html: `
+        await pool.query(
+            'UPDATE users SET reset_token = $1, reset_expiry = $2 WHERE email = $3',
+            [resetToken, resetExpiry, email]
+        );
+
+        // Send reset email
+        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Password Reset - SatAns',
+            html: `
                 <h2>Password Reset Request</h2>
                 <p>Click the link below to reset your password:</p>
                 <a href="${resetLink}">${resetLink}</a>
                 <p>This link will expire in 1 hour.</p>
             `
-            };
+        };
 
-            transporter.sendMail(mailOptions);
-        }
+        transporter.sendMail(mailOptions);
 
-        // Always return the same response to prevent user enumeration
-        res.json({ message: 'If the email exists, a password reset link has been sent.' });
+        res.json({ message: 'Password reset link sent to your email.' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to process request.' });
     }
@@ -465,16 +410,6 @@ app.post('/api/payment/create-order', verifyToken, async (req, res) => {
 app.post('/api/payment/verify', verifyToken, async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, packageName, amount } = req.body;
-
-        // Check for idempotency - prevent duplicate processing
-        const existing = await pool.query(
-            'SELECT * FROM subscriptions WHERE transaction_id = $1',
-            [razorpay_payment_id]
-        );
-
-        if (existing.rows.length > 0) {
-            return res.status(400).json({ error: 'Payment already processed.' });
-        }
 
         // Verify signature
         const body = razorpay_order_id + '|' + razorpay_payment_id;
