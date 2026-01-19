@@ -2,15 +2,31 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { body, validationResult } = require('express-validator');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const path = require('path');
 require('dotenv').config();
 
+// DEBUG: Log environment variables on startup
+console.log('=== Environment Check ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('DB_HOST:', process.env.DB_HOST || 'NOT SET');
+console.log('DB_USER:', process.env.DB_USER || 'NOT SET');
+console.log('DB_NAME:', process.env.DB_NAME || 'NOT SET');
+console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '***SET***' : 'NOT SET');
+console.log('DB_PORT:', process.env.DB_PORT || 'NOT SET');
+console.log('========================');
+
 const pool = require('./config/database');
 
 const app = express();
+
+// Trust Vercel's proxy for rate limiting and IP detection
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors());
@@ -40,6 +56,9 @@ const transporter = nodemailer.createTransport({
 });
 
 // JWT Secret
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    console.warn('WARNING: JWT_SECRET is not defined in production environment!');
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Middleware to verify JWT token
@@ -122,8 +141,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         res.status(201).json({
             message: 'Registration successful. Please check your email for verification code.',
-            user: result.rows[0],
-            verificationCode: verificationCode // Remove in production
+            user: result.rows[0]
         });
     } catch (error) {
         console.error('Registration error:', error);
@@ -243,9 +261,18 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/admin-login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD) {
+
+        // Timing-safe comparison to prevent timing attacks
+        const isEmailValid = email === process.env.ADMIN_EMAIL;
+
+        // Always compare password even if email is wrong (prevent timing attacks)
+        const passwordToCheck = isEmailValid ? process.env.ADMIN_PASSWORD_HASH : '$2a$10$dummyhashtopreventtimingattacksxxxxxxxxxxxxxxxxxxxxxxxxxx';
+        const isPasswordValid = await bcrypt.compare(password, passwordToCheck);
+
+        if (!isEmailValid || !isPasswordValid) {
             return res.status(400).json({ error: 'Invalid admin credentials.' });
         }
+
         const token = jwt.sign({ email: email, role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ token, message: 'Admin login successful' });
     } catch (error) {
@@ -291,6 +318,42 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         res.json({ message: 'Password reset link sent to your email.' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to process request.' });
+    }
+});
+
+// Reset Password (NEW ENDPOINT)
+app.post('/api/auth/reset-password', [
+    body('token').notEmpty().trim(),
+    body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
+        const { token, newPassword } = req.body;
+
+        const result = await pool.query(
+            'SELECT * FROM users WHERE reset_token = $1 AND reset_expiry > NOW()',
+            [token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(400).json({ error: 'Invalid or expired reset token.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await pool.query(
+            'UPDATE users SET password = $1, reset_token = NULL, reset_expiry = NULL WHERE id = $2',
+            [hashedPassword, result.rows[0].id]
+        );
+
+        res.json({ message: 'Password reset successful.' });
+    } catch (error) {
+        console.error('Password reset error:', error);
+        res.status(500).json({ error: 'Failed to reset password.' });
     }
 });
 
@@ -458,7 +521,7 @@ app.post('/api/contact/submit', async (req, res) => {
         // Send notification email to admin
         const mailOptions = {
             from: process.env.EMAIL_USER,
-            to: 'satansproduction@gmail.com',
+            to: process.env.ADMIN_EMAIL,
             replyTo: email, // Set reply-to to user's email
             subject: 'New Contact Form Submission',
             html: `
@@ -668,11 +731,16 @@ app.get('/api/admin/packages', verifyAdmin, async (req, res) => {
 // Get Active Packages (Public)
 app.get('/api/packages', async (req, res) => {
     try {
+        console.log('📦 Fetching packages...');
         const result = await pool.query(
             'SELECT * FROM packages ORDER BY display_order ASC'
         );
+        console.log(`✅ Found ${result.rows.length} packages`);
         res.json(result.rows);
     } catch (error) {
+        console.error('❌ Package fetch error:', error.message);
+        console.error('Error code:', error.code);
+        console.error('Full error:', error);
         res.status(500).json({ error: 'Failed to fetch packages.' });
     }
 });
